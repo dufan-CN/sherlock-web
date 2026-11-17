@@ -1,0 +1,58 @@
+{
+  "V2EX": {
+    "errorType": "status_code",
+    "request_method": "GET",
+    "url": "https://www.v2ex.com/member/{}",
+    "urlMain": "https://www.v2ex.com/",
+    "username_claimed": "Livid"
+  },
+  "豆瓣": {
+    "errorType": "status_code",
+    "url": "https://www.douban.com/people/{}/",
+    "urlMain": "https://www.douban.com/",
+    "username_claimed": "ahbei"
+  },
+  "博客园": {
+    "errorType": "status_code",
+    "url": "https://www.cnblogs.com/{}/",
+    "urlMain": "https://www.cnblogs.com/",
+    "username_claimed": "cnblogs"
+  },
+  "雪球": {
+    "errorType": "status_code",
+    "url": "https://xueqiu.com/{}",
+    "urlMain": "https://xueqiu.com/",
+    "username_claimed": "xueqiu"
+  },
+  "爱范儿": {
+    "errorType": "status_code",
+    "request_method": "GET",
+    "url": "https://www.ifanr.com/author/{}",
+    "urlMain": "https://www.ifanr.com/",
+    "username_claimed": "ifanr"
+  },
+  "哔哩哔哩UID": {
+    "errorType": "status_code",
+    "url": "https://space.bilibili.com/{}",
+    "urlMain": "https://www.bilibili.com/",
+    "username_claimed": "2",
+    "regexCheck": "^[0-9]{1,12}$"
+  },
+  "抖音号": {
+    "errorType": "message",
+    "errorMsg": "参数不合法",
+    "url": "https://www.douyin.com/search/{}?type=user",
+    "urlProbe": "https://www.iesdouyin.com/web/api/v2/user/info/?unique_id={}",
+    "urlMain": "https://www.douyin.com/",
+    "username_claimed": "papi",
+    "regexCheck": "^(?=.*[A-Za-z])[A-Za-z0-9._-]{2,24}$"
+  },
+  "QQ号": {
+    "errorType": "message",
+    "errorMsg": "找不回来了",
+    "url": "https://user.qzone.qq.com/{}",
+    "urlMain": "https://user.qzone.qq.com/",
+    "username_claimed": "10001",
+    "regexCheck": "^[1-9][0-9]{4,10}$"
+  }
+}

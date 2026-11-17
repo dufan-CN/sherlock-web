@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sherlock · 用户名跨站查询</title>
+<style>
+  :root{
+    --bg:#0b0e13; --card:#121821; --card2:#0f151d; --line:#1f2a37;
+    --text:#dbe6f2; --muted:#7d8ea3; --accent:#2dd4a7; --accent-dim:#1c8f6f;
+    --warn:#e3b341; --err:#f0708a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#16222e 0%,var(--bg) 60%);
+       color:var(--text);font:15px/1.6 -apple-system,"Segoe UI",system-ui,"Microsoft YaHei",sans-serif;
+       min-height:100vh;padding:36px 16px 64px}
+  .wrap{max-width:860px;margin:0 auto}
+  header{text-align:center;margin-bottom:26px}
+  h1{font-size:30px;margin:0 0 6px;letter-spacing:.5px}
+  h1 span{color:var(--accent)}
+  header p{color:var(--muted);margin:0;font-size:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;
+        box-shadow:0 12px 32px rgba(0,0,0,.35)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  input[type=text],select{background:var(--card2);border:1px solid var(--line);color:var(--text);
+        border-radius:10px;padding:11px 13px;font-size:15px;outline:none;transition:.15s}
+  input[type=text]:focus,select:focus{border-color:var(--accent-dim);box-shadow:0 0 0 3px rgba(45,212,167,.12)}
+  input[type=text]::placeholder{color:#5b6b7d}
+  #username{flex:1 1 240px}
+  button{background:var(--accent);color:#06231a;border:0;border-radius:10px;padding:11px 22px;
+         font-size:15px;font-weight:700;cursor:pointer;transition:.15s}
+  button:hover:not(:disabled){filter:brightness(1.08)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .ghost{background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500}
+  .ghost:hover:not(:disabled){border-color:var(--accent-dim);color:var(--accent)}
+  details{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+  summary{cursor:pointer;color:var(--muted);font-size:14px;user-select:none;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary:before{content:"▸ ";color:var(--accent)}
+  details[open] summary:before{content:"▾ "}
+  .opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:.04em}
+  .field select,.field input{width:100%}
+  .chk{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;margin-top:14px}
+  .status{margin-top:16px;font-size:14px;color:var(--muted);min-height:22px;display:flex;
+          align-items:center;gap:10px;flex-wrap:wrap}
+  .status.err{color:var(--err)}
+  .bar{height:3px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:10px;display:none}
+  .bar.on{display:block}
+  .bar i{display:block;height:100%;width:36%;background:var(--accent);border-radius:3px;
+         animation:slide 1.15s ease-in-out infinite}
+  @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
+  .results{margin-top:22px;display:none}
+  .results.on{display:block}
+  .meta{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .meta strong{color:var(--accent);font-size:16px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:12px;letter-spacing:.06em;
+     padding:8px 10px;border-bottom:1px solid var(--line);text-transform:uppercase}
+  td{padding:9px 10px;border-bottom:1px solid rgba(31,42,55,.7);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  td.site{white-space:nowrap;width:1%;color:var(--text)}
+  td a{color:#7ee7c7;text-decoration:none;word-break:break-all}
+  td a:hover{text-decoration:underline}
+  .empty{color:var(--muted);padding:18px 4px}
+  .divider{display:flex;align-items:center;gap:12px;color:#57687c;font-size:12px;margin:26px 0 16px}
+  .divider:before,.divider:after{content:"";flex:1;height:1px;background:var(--line)}
+  .cncard{margin-top:0}
+  .cnhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .cnhead h2{font-size:17px;margin:0;font-weight:600}
+  .cnhead span{color:var(--muted);font-size:12.5px}
+  .urow{display:flex;gap:12px;align-items:flex-start;padding:12px 4px;border-bottom:1px solid rgba(31,42,55,.7)}
+  .urow:last-child{border-bottom:0}
+  .ava{width:34px;height:34px;flex:0 0 34px;border-radius:50%;display:flex;align-items:center;
+       justify-content:center;background:#1b2634;color:var(--accent);font-weight:700;font-size:14px}
+  .uinfo{flex:1;min-width:0}
+  .uname{font-weight:600;color:var(--text)}
+  .uname small{color:var(--muted);font-weight:400;margin-left:8px}
+  .usign{color:var(--muted);font-size:13px;margin-top:3px;word-break:break-all}
+  .uact{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .mini{background:transparent;border:1px solid var(--line);color:#9fb3c8;border-radius:8px;
+        padding:4px 10px;font-size:12px;font-weight:500;cursor:pointer}
+  .mini:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .tab{background:transparent;border:1px solid var(--line);color:#9fb3c8;border-radius:8px;
+       padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer}
+  .tab.on{background:rgba(45,212,167,.12);border-color:var(--accent-dim);color:var(--accent)}
+  .ava img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+  .badge{display:inline-block;margin-left:8px;padding:0 5px;border-radius:4px;
+         background:rgba(227,179,65,.15);color:var(--warn);font-size:11px;font-weight:600}
+  .hint{color:var(--muted);font-size:12.5px;margin-top:10px;line-height:1.8}
+  footer{text-align:center;color:#4d5b6d;font-size:12px;margin-top:28px;line-height:1.9}
+  code{background:#0e141c;padding:1px 6px;border-radius:5px;color:#8fb8a8;font-size:12px}
+  @media(max-width:560px){h1{font-size:24px}body{padding-top:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Sher<span>lock</span></h1>
+    <p>输入一个用户名，在 <span id="siteTotal">481</span> 个公开站点（含国内站点）上查它是否被注册</p>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <input id="username" type="text" placeholder="用户名 / 中文昵称，例如 torvalds、阿北" autocomplete="off" spellcheck="false" maxlength="32">
+      <button id="go">开始查询</button>
+    </div>
+
+    <details>
+      <summary>高级选项</summary>
+      <div class="opts">
+        <div class="field">
+          <label>查询范围</label>
+          <select id="scope">
+            <option value="popular">热门站点（<span id="popCount">46</span> 个，快）</option>
+            <option value="all">全部站点（<span id="allCount">481</span> 个，慢）</option>
+            <option value="custom">自定义站点</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>单站点超时（秒）</label>
+          <select id="timeout">
+            <option value="8">8</option>
+            <option value="15" selected>15</option>
+            <option value="25">25</option>
+            <option value="40">40</option>
+          </select>
+        </div>
+        <div class="field" id="customWrap" style="display:none">
+          <label>站点名（逗号分隔）</label>
+          <input id="customSites" type="text" list="siteList" placeholder="GitHub, Reddit, TikTok">
+          <datalist id="siteList"></datalist>
+        </div>
+      </div>
+      <div class="chk">
+        <input id="nsfw" type="checkbox">
+        <label for="nsfw" style="cursor:pointer">包含 NSFW 站点</label>
+      </div>
+    </details>
+
+    <div class="status" id="status">就绪</div>
+    <div class="bar" id="bar"><i></i></div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="meta">
+      <div><strong id="count">0</strong> <span style="color:var(--muted)">个站点存在该用户名 · 耗时 <span id="elapsed">0</span>s</span></div>
+      <div class="row">
+        <button class="ghost" id="copy">复制</button>
+        <button class="ghost" id="csv">下载 CSV</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>站点</th><th>链接</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="empty" style="display:none">没有命中任何站点。换个用户名试试，或者把范围改成“全部站点”。</div>
+  </div>
+
+  <div class="divider">国内平台 · 按中文昵称找人</div>
+
+  <div class="card cncard">
+    <div class="cnhead">
+      <h2>中文昵称搜索</h2>
+      <span>B站接口支持中文关键词，搜到的是 UID，可再拿去上面验证</span>
+    </div>
+    <div class="row">
+      <input id="kw" type="text" placeholder="中文昵称，例如 碧诗、老番茄" autocomplete="off" spellcheck="false" maxlength="32">
+      <button id="cnGo">搜索用户</button>
+    </div>
+    <div class="status" id="cnStatus">就绪</div>
+    <div class="uact" id="cnLinks" style="margin-top:12px"></div>
+    <div class="results" id="cnResults">
+      <div class="meta">
+        <div><strong id="cnCount">0</strong> <span style="color:var(--muted)">个候选账号 · 哔哩哔哩</span></div>
+      </div>
+      <div id="cnList"></div>
+      <div class="empty" id="cnEmpty" style="display:none">没有搜到用户。换个昵称试试（很多账号昵称与常用称呼不一致）。</div>
+    </div>
+  </div>
+
+  <div class="divider">国内平台 · 按账号直查</div>
+
+  <div class="card cncard">
+    <div class="cnhead">
+      <h2>微博 / 抖音 / QQ / 微信</h2>
+      <span>微博填昵称或 UID；抖音填抖音号；QQ 填 QQ 号；微信填关键词</span>
+    </div>
+    <div class="tabs" id="platTabs">
+      <button class="tab on" data-plat="weibo">微博</button>
+      <button class="tab" data-plat="douyin">抖音号</button>
+      <button class="tab" data-plat="qq">QQ 号</button>
+      <button class="tab" data-plat="wechat">微信</button>
+    </div>
+    <div class="row">
+      <input id="pq" type="text" placeholder="微博昵称或 UID，例如 李荣浩、1739046981" autocomplete="off" spellcheck="false" maxlength="32">
+      <button id="pGo">查询</button>
+    </div>
+    <div class="status" id="pStatus">就绪</div>
+    <div class="hint" id="pHint">
+      微博按昵称搜索或按 UID 查资料 · 抖音号精确比对 · QQ 号用空间页判定是否注册
+    </div>
+    <div class="results" id="pResults">
+      <div class="meta">
+        <div><strong id="pCount">0</strong> <span style="color:var(--muted)" id="pMeta">个账号</span></div>
+      </div>
+      <div id="pList"></div>
+      <div class="empty" id="pEmpty" style="display:none">没有查到账号。</div>
+    </div>
+    <div class="hint">
+      微信个人号没有公开主页，任何免登录接口都查不到；上面「微信」标签是按关键词反查发过相关文章的公众号。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cnhead">
+      <h2>Maigret 深度查询</h2>
+      <span>第二个引擎，站点库 5897 个，比 Sherlock 多；结果可能有误报，需点开确认</span>
+    </div>
+    <div class="row">
+      <input id="mgUser" type="text" placeholder="用户名，例如 torvalds" autocomplete="off" spellcheck="false" maxlength="32">
+      <select id="mgScope">
+        <option value="cn">中国站点（快）</option>
+        <option value="top">热门 200 站</option>
+        <option value="all">全量 5897 站（很慢）</option>
+      </select>
+      <button id="mgGo">深度查询</button>
+    </div>
+    <div class="status" id="mgStatus">就绪</div>
+    <div class="results" id="mgResults">
+      <div class="meta">
+        <div><strong id="mgCount">0</strong> <span style="color:var(--muted)" id="mgMeta">个站点</span></div>
+      </div>
+      <div id="mgList"></div>
+      <div class="empty" id="mgEmpty" style="display:none">没有查到站点。</div>
+    </div>
+    <div class="hint">
+      Maigret 的判定比 Sherlock 宽松（主要靠页面特征），所以结果更多、也更可能误报，请逐个点开核对。
+    </div>
+  </div>
+
+  <footer>
+    数据来自 <code>D:\Sherlock</code> 本地实例 · 结果仅指该用户名在公开页面上存在<br>
+    中文昵称搜索调用 B站公开接口，只按昵称匹配，不等于同一人<br>
+    微博 / 抖音 / QQ 直查走各平台公开接口，结果是“该账号存在”，不代表身份确认<br>
+    请遵守各平台服务条款与当地法律，不要用于骚扰或非法画像
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let allSites = [], popularSites = [], timer = null;
+
+fetch('/api/sites').then(r => r.json()).then(d => {
+  allSites = d.all || []; popularSites = d.popular || [];
+  $('siteList').innerHTML = allSites.map(s => `<option value="${s.replace(/"/g,'&quot;')}">`).join('');
+  if (d.count) { $('siteTotal').textContent = d.count; $('allCount').textContent = d.count; }
+  if (popularSites.length) $('popCount').textContent = popularSites.length;
+  $('status').textContent = `就绪 · 已加载 ${d.count} 个站点`;
+}).catch(() => { $('status').textContent = '就绪（站点列表加载失败，仍可查询）'; });
+
+$('scope').addEventListener('change', e => {
+  $('customWrap').style.display = e.target.value === 'custom' ? 'block' : 'none';
+});
+
+function setStatus(msg, isErr) {
+  $('status').textContent = msg;
+  $('status').className = 'status' + (isErr ? ' err' : '');
+}
+
+function buildSites() {
+  const scope = $('scope').value;
+  if (scope === 'all') return [];
+  if (scope === 'popular') return popularSites;
+  return $('customSites').value.split(/[,，\s]+/).map(s => s.trim()).filter(Boolean);
+}
+
+$('go').addEventListener('click', start);
+$('username').addEventListener('keydown', e => { if (e.key === 'Enter') start(); });
+
+async function start() {
+  const username = $('username').value.trim();
+  if (!username) { setStatus('先填一个用户名', true); return; }
+
+  const sites = buildSites();
+  if ($('scope').value === 'custom' && sites.length === 0) {
+    setStatus('自定义模式下请填至少一个站点名', true); return;
+  }
+
+  $('go').disabled = true;
+  $('results').classList.remove('on');
+  $('bar').classList.add('on');
+  setStatus('正在提交查询…');
+
+  try {
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        username,
+        sites,
+        timeout: Number($('timeout').value),
+        nsfw: $('nsfw').checked
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    poll(data.id, data.sites);
+  } catch (e) {
+    finish();
+    setStatus('查询失败：' + e.message, true);
+  }
+}
+
+function poll(id, siteCount) {
+  let dots = 0;
+  clearInterval(timer);
+  timer = setInterval(async () => {
+    dots = (dots + 1) % 4;
+    try {
+      const r = await fetch('/api/job/' + id);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      if (j.status === 'queued') setStatus('排队中' + '.'.repeat(dots));
+      else if (j.status === 'running') setStatus(`正在检查 ${siteCount} 个站点` + '.'.repeat(dots));
+      else if (j.status === 'done') { clearInterval(timer); render(j); finish(); }
+      else if (j.status === 'error') { clearInterval(timer); finish(); setStatus('出错了：' + (j.error || '未知错误'), true); }
+    } catch (e) {
+      clearInterval(timer); finish();
+      setStatus('查询失败：' + e.message, true);
+    }
+  }, 1200);
+}
+
+function finish() {
+  $('go').disabled = false;
+  $('bar').classList.remove('on');
+  clearInterval(timer);
+}
+
+let last = null;
+
+function render(j) {
+  last = j;
+  setStatus(`完成 · ${j.count} 个命中`);
+  $('results').classList.add('on');
+  $('count').textContent = j.count;
+  $('elapsed').textContent = j.elapsed;
+  $('tbody').innerHTML = j.found.map(f =>
+    `<tr><td class="site">${esc(f.site)}</td><td><a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer nofollow">${esc(f.url)}</a></td></tr>`
+  ).join('');
+  $('empty').style.display = j.count ? 'none' : 'block';
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+$('copy').addEventListener('click', async () => {
+  if (!last) return;
+  const text = [`username: ${last.username}`, `found: ${last.count}`]
+    .concat(last.found.map(f => `${f.site}\t${f.url}`)).join('\n');
+  try { await navigator.clipboard.writeText(text); setStatus('已复制到剪贴板'); }
+  catch { setStatus('复制失败，浏览器不支持剪贴板', true); }
+});
+
+$('csv').addEventListener('click', () => {
+  if (!last) return;
+  const rows = [['username','site','url']].concat(last.found.map(f => [last.username, f.site, f.url]));
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `sherlock_${last.username}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* ---------- 中文昵称搜索（B站） ---------- */
+const CN_PLATFORMS = [
+  ['微博',   kw => 'https://s.weibo.com/user?q=' + encodeURIComponent(kw)],
+  ['知乎',   kw => 'https://www.zhihu.com/search?type=people&q=' + encodeURIComponent(kw)],
+  ['小红书', kw => 'https://www.xiaohongshu.com/search_result?keyword=' + encodeURIComponent(kw)],
+  ['抖音',   kw => 'https://www.douyin.com/search/' + encodeURIComponent(kw) + '?type=user'],
+  ['贴吧',   kw => 'https://tieba.baidu.com/f/search/res?qw=' + encodeURIComponent(kw)],
+  ['豆瓣',   kw => 'https://www.douban.com/search?q=' + encodeURIComponent(kw)]
+];
+
+function cnLinks(kw) {
+  $('cnLinks').innerHTML = kw
+    ? '<span style="color:var(--muted);font-size:12px;align-self:center">这些平台要登录且用数字 ID，无法免登录验证，可点开自行搜：</span>' +
+      CN_PLATFORMS.map(([name, fn]) =>
+        `<a class="mini" href="${esc(fn(kw))}" target="_blank" rel="noopener noreferrer">${esc(name)}</a>`).join('')
+    : '';
+}
+
+function cnStatus(msg, isErr) {
+  $('cnStatus').textContent = msg;
+  $('cnStatus').className = 'status' + (isErr ? ' err' : '');
+}
+
+$('cnGo').addEventListener('click', cnSearch);
+$('kw').addEventListener('keydown', e => { if (e.key === 'Enter') cnSearch(); });
+
+async function cnSearch() {
+  const kw = $('kw').value.trim();
+  if (!kw) { cnStatus('先填一个昵称', true); return; }
+  cnLinks(kw);
+  $('cnGo').disabled = true;
+  $('cnResults').classList.remove('on');
+  cnStatus('正在搜索…');
+  try {
+    const res = await fetch('/api/cn-search', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({keyword: kw})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    cnRender(data);
+  } catch (e) {
+    cnStatus('搜索失败：' + e.message, true);
+  } finally {
+    $('cnGo').disabled = false;
+  }
+}
+
+function cnRender(data) {
+  const items = data.items || [];
+  cnStatus(items.length ? `完成 · 搜到 ${items.length} 个候选账号` : '完成 · 没有搜到');
+  $('cnResults').classList.add('on');
+  $('cnCount').textContent = items.length;
+  $('cnEmpty').style.display = items.length ? 'none' : 'block';
+  $('cnList').innerHTML = items.map(u => {
+    const fans = (u.fans === null || u.fans === undefined) ? '' :
+      `<small>粉丝 ${Number(u.fans) >= 10000 ? (Number(u.fans) / 10000).toFixed(1) + ' 万' : Number(u.fans)}</small>`;
+    return `<div class="urow">
+      <div class="ava">${esc((u.name || '?').slice(0, 1))}</div>
+      <div class="uinfo">
+        <div class="uname">${esc(u.name)}<small>UID ${esc(u.uid)}</small>${fans}</div>
+        <div class="usign">${esc(u.sign || '（无签名）')}</div>
+        <div class="uact">
+          <button class="mini" data-uid="${esc(u.uid)}">用这个 UID 复查</button>
+          <button class="mini" data-open="${esc(u.url)}">打开空间</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  $('cnList').querySelectorAll('[data-uid]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $('username').value = btn.dataset.uid;
+      $('scope').value = 'custom';
+      $('customWrap').style.display = 'block';
+      $('customSites').value = '哔哩哔哩UID';
+      $('username').scrollIntoView({behavior: 'smooth', block: 'center'});
+      start();
+    });
+  });
+  $('cnList').querySelectorAll('[data-open]').forEach(btn => {
+    btn.addEventListener('click', () => window.open(btn.dataset.open, '_blank', 'noopener,noreferrer'));
+  });
+}
+
+/* ---------- 国内平台直查：微博 / 抖音 / QQ ---------- */
+const PLAT = {
+  weibo:  {name:'微博', placeholder:'微博昵称或 UID，例如 李荣浩、1739046981'},
+  douyin: {name:'抖音', placeholder:'抖音号，例如 papi、laofanqie'},
+  qq:     {name:'QQ',   placeholder:'QQ 号，例如 10001、10086'},
+  wechat: {name:'微信', placeholder:'关键词，例如 人民日报、考研'}
+};
+let plat = 'weibo';
+
+const PLAT_HINT = {
+  weibo:  '微博按昵称搜索或按 UID 查资料（UID 为纯数字时自动按 UID 查）',
+  douyin: '抖音号精确比对，返回的 unique_id / 短 ID 必须与输入一致才算',
+  qq:     'QQ 号用 QQ 空间页面判定是否注册（未注册的号会落到 404 页）',
+  wechat: '个人微信号没有公开主页，查不到“这个号是否存在”；这里按关键词反查发过相关文章的公众号'
+};
+
+$('platTabs').querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    $('platTabs').querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+    plat = t.dataset.plat;
+    $('pq').placeholder = PLAT[plat].placeholder;
+    $('pHint').textContent = PLAT_HINT[plat];
+    $('pResults').classList.remove('on');
+    pStatus('就绪');
+  });
+});
+
+function pStatus(msg, isErr) {
+  $('pStatus').textContent = msg;
+  $('pStatus').className = 'status' + (isErr ? ' err' : '');
+}
+
+$('pGo').addEventListener('click', pSearch);
+$('pq').addEventListener('keydown', e => { if (e.key === 'Enter') pSearch(); });
+
+async function pSearch() {
+  const q = $('pq').value.trim().replace(/^@/, '');
+  if (!q) { pStatus('先填要查的内容', true); return; }
+  $('pGo').disabled = true;
+  $('pResults').classList.remove('on');
+  pStatus('正在查询…');
+  try {
+    const res = await fetch('/api/plat-search', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({platform: plat, query: q})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    pRender(data);
+  } catch (e) {
+    pStatus('查询失败：' + e.message, true);
+  } finally {
+    $('pGo').disabled = false;
+  }
+}
+
+function pRender(data) {
+  const items = data.items || [];
+  const label = `${data.platform} · 按${data.mode}查询`;
+  pStatus(items.length ? `完成 · 查到 ${items.length} 个` : `完成 · 没有查到（${label}）`);
+  $('pResults').classList.add('on');
+  $('pCount').textContent = items.length;
+  $('pMeta').textContent = `个账号 · ${label}`;
+  $('pEmpty').style.display = items.length ? 'none' : 'block';
+
+  $('pList').innerHTML = items.map(u => {
+    const fans = (u.fans === null || u.fans === undefined) ? '' :
+      `<small>粉丝 ${Number(u.fans) >= 10000 ? (Number(u.fans) / 10000).toFixed(1) + ' 万' : Number(u.fans)}</small>`;
+    const vb = u.verified ? '<span class="badge">已认证</span>' : '';
+    const ava = u.avatar
+      ? `<div class="ava"><img src="${esc(u.avatar)}" alt="" referrerpolicy="no-referrer"></div>`
+      : `<div class="ava">${esc((u.name || '?').slice(0, 1))}</div>`;
+    const via = u.via ? `<small>${esc(u.via)}</small>` : '';
+    return `<div class="urow">
+      ${ava}
+      <div class="uinfo">
+        <div class="uname">${esc(u.name)}${vb}<small>${esc(u.uid)}</small>${fans}${via}</div>
+        <div class="usign">${esc(u.sign || '（无签名）')}</div>
+        <div class="uact">
+          <button class="mini" data-open="${esc(u.url)}">打开主页</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  $('pList').querySelectorAll('[data-open]').forEach(btn => {
+    btn.addEventListener('click', () => window.open(btn.dataset.open, '_blank', 'noopener,noreferrer'));
+  });
+}
+function mgStatus(msg, isErr) {
+  $('mgStatus').textContent = msg;
+  $('mgStatus').className = 'status' + (isErr ? ' err' : '');
+}
+
+$('mgGo').addEventListener('click', mgSearch);
+$('mgUser').addEventListener('keydown', e => { if (e.key === 'Enter') mgSearch(); });
+
+async function mgSearch() {
+  const u = $('mgUser').value.trim();
+  if (!u) { mgStatus('先填用户名', true); return; }
+  const scope = $('mgScope').value;
+  $('mgGo').disabled = true;
+  $('mgResults').classList.remove('on');
+  mgStatus(scope === 'all' ? '正在跑 Maigret 全量扫描，可能要几分钟…' : '正在跑 Maigret，约 20-60 秒…');
+  try {
+    const res = await fetch('/api/maigret', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username: u, scope: scope})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    mgRender(data);
+  } catch (e) {
+    mgStatus('查询失败：' + e.message, true);
+  } finally {
+    $('mgGo').disabled = false;
+  }
+}
+
+function mgRender(data) {
+  const items = data.items || [];
+  const scopeName = {cn: '中国站点', top: '热门 200 站', all: '全量站点'}[data.scope] || data.scope;
+  mgStatus(items.length
+    ? `完成 · ${scopeName}扫了 ${data.total || '?'} 个站，命中 ${items.length} 个`
+    : `完成 · ${scopeName}扫了 ${data.total || '?'} 个站，没有命中`);
+  $('mgResults').classList.add('on');
+  $('mgCount').textContent = items.length;
+  $('mgMeta').textContent = `个站点 · ${scopeName}`;
+  $('mgEmpty').style.display = items.length ? 'none' : 'block';
+
+  $('mgList').innerHTML = items.map(it => `<div class="urow">
+    <div class="ava">${esc((it.site || '?').slice(0, 1))}</div>
+    <div class="uinfo">
+      <div class="uname">${esc(it.site)}</div>
+      <div class="usign">${esc(it.url)}</div>
+      <div class="uact">
+        <button class="mini" data-open="${esc(it.url)}">打开主页</button>
+      </div>
+    </div>
+  </div>`).join('');
+
+  $('mgList').querySelectorAll('[data-open]').forEach(btn => {
+    btn.addEventListener('click', () => window.open(btn.dataset.open, '_blank', 'noopener,noreferrer'));
+  });
+}
+</script>
+</body>
+</html>

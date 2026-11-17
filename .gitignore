@@ -1,0 +1,21 @@
+# 运行产物与密钥，禁止提交
+service.log
+cloudflared.log
+data_merged.json
+tunnel_token.txt
+cloudflared.yml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 编辑器
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Maigret 生成的报告
+reports/
