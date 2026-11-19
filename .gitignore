@@ -5,6 +5,11 @@ data_merged.json
 tunnel_token.txt
 cloudflared.yml
 
+# AI 助手本地缓存库（含站点目录与调用日志）
+ai.db
+ai.db-wal
+ai.db-shm
+
 # Python
 __pycache__/
 *.py[cod]

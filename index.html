@@ -89,6 +89,14 @@
   .badge{display:inline-block;margin-left:8px;padding:0 5px;border-radius:4px;
          background:rgba(227,179,65,.15);color:var(--warn);font-size:11px;font-weight:600}
   .hint{color:var(--muted);font-size:12.5px;margin-top:10px;line-height:1.8}
+  .etout{display:none;white-space:pre-wrap;word-break:break-all;margin:12px 0 0;
+         font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-size:12.5px;
+         line-height:1.7;background:#0d1521;border:1px solid var(--line);border-radius:10px;
+         padding:14px;max-height:420px;overflow:auto}
+  .etout.on{display:block}
+  .runline{margin:0 0 10px;padding:8px 12px;border-left:3px solid var(--accent-dim);
+           background:rgba(45,212,167,.06);border-radius:0 8px 8px 0;font-size:13px;color:var(--muted)}
+  .runline strong{color:var(--accent)}
   footer{text-align:center;color:#4d5b6d;font-size:12px;margin-top:28px;line-height:1.9}
   code{background:#0e141c;padding:1px 6px;border-radius:5px;color:#8fb8a8;font-size:12px}
   @media(max-width:560px){h1{font-size:24px}body{padding-top:24px}}
@@ -100,6 +108,23 @@
     <h1>Sher<span>lock</span></h1>
     <p>输入一个用户名，在 <span id="siteTotal">481</span> 个公开站点（含国内站点）上查它是否被注册</p>
   </header>
+
+  <div class="divider">AI 助手 · 本地 DeepSeek R1 读站点库</div>
+
+  <div class="card">
+    <div class="cnhead">
+      <h2>AI 搜索</h2>
+      <span>可以直接说「帮我查 nasa 这个用户名」「这个邮箱注册过什么」，它会自己去跑工具再解释；问方法也行</span>
+    </div>
+    <div class="row">
+      <input id="aiQ" type="text" placeholder="例如：帮我查 torvalds 这个用户名 / 查 example.com 的子域名" autocomplete="off" spellcheck="false" maxlength="300">
+      <button id="aiGo">问 AI</button>
+    </div>
+    <div class="status" id="aiStatus">就绪 · 本地 deepseek-r1:14b</div>
+    <div id="aiAnswer" style="display:none;margin-top:14px;line-height:1.9;font-size:14px"></div>
+    <div id="aiSrc" style="display:none;margin-top:14px"></div>
+    <div class="hint">模型和站点库都在这台机器上，提问不出门；它不联网，也不会凭空给出账号或链接。</div>
+  </div>
 
   <div class="card">
     <div class="row">
@@ -240,8 +265,66 @@
     </div>
   </div>
 
+  <div class="divider">更多工具 · 邮箱 / 手机号 / 域名</div>
+
+  <div class="card">
+    <div class="cnhead">
+      <h2>邮箱溯源 · Holehe</h2>
+      <span>只走各站「忘记密码」流程判断是否注册，不会给对方发任何通知；一次约 1-2 分钟</span>
+    </div>
+    <div class="row">
+      <input id="hlTarget" type="text" placeholder="邮箱，例如 someone@gmail.com" autocomplete="off" spellcheck="false" maxlength="64">
+      <button id="hlGo">查注册情况</button>
+    </div>
+    <div class="status" id="hlStatus">就绪</div>
+    <pre class="etout" id="hlOut"></pre>
+    <div class="hint">读法：<code>[+]</code> 该邮箱在这个站有账号，<code>[x]</code> 没有，<code>[-]</code> 探测失败或被限流。部分站点会拖慢整体速度。</div>
+  </div>
+
+  <div class="card">
+    <div class="cnhead">
+      <h2>Google 账号 · GHunt</h2>
+      <span>需要先用你自己的 Google 登录态执行一次 ghunt login；默认关闭，须设 SHERLOCK_GHUNT=1</span>
+    </div>
+    <div class="row">
+      <input id="ghTarget" type="text" placeholder="Gmail 地址，例如 someone@gmail.com" autocomplete="off" spellcheck="false" maxlength="64">
+      <button id="ghGo">查 Google 资料</button>
+    </div>
+    <div class="status" id="ghStatus">就绪</div>
+    <pre class="etout" id="ghOut"></pre>
+    <div class="hint">返回昵称、头像、注册线索等公开信息；GAIA ID 可再用 gaia 子命令展开。</div>
+  </div>
+
+  <div class="card">
+    <div class="cnhead">
+      <h2>手机号 · PhoneInfoga</h2>
+      <span>归属国家 / 运营商 / 公开足迹；建议带国家码，如 +852、+86</span>
+    </div>
+    <div class="row">
+      <input id="phTarget" type="text" placeholder="手机号，例如 +85212345678" autocomplete="off" spellcheck="false" maxlength="32">
+      <button id="phGo">扫描号码</button>
+    </div>
+    <div class="status" id="phStatus">就绪</div>
+    <pre class="etout" id="phOut"></pre>
+    <div class="hint">不带国家码时结果可能落到错误国家，务必加 +。</div>
+  </div>
+
+  <div class="card">
+    <div class="cnhead">
+      <h2>域名资产 · theHarvester</h2>
+      <span>从证书透明日志与搜索引擎扒子域名、邮箱；走本地 Docker 镜像，单次 30-90 秒</span>
+    </div>
+    <div class="row">
+      <input id="hvTarget" type="text" placeholder="域名，例如 example.com" autocomplete="off" spellcheck="false" maxlength="64">
+      <button id="hvGo">收集资产</button>
+    </div>
+    <div class="status" id="hvStatus">就绪</div>
+    <pre class="etout" id="hvOut"></pre>
+    <div class="hint">只用 crtsh + duckduckgo 两个免密钥源；需要 API Key 的源（shodan、hunter 等）未启用。</div>
+  </div>
+
   <footer>
-    数据来自 <code>D:\Sherlock</code> 本地实例 · 结果仅指该用户名在公开页面上存在<br>
+    数据来自本地部署的 Sherlock 实例 · 结果仅指该用户名在公开页面上存在<br>
     中文昵称搜索调用 B站公开接口，只按昵称匹配，不等于同一人<br>
     微博 / 抖音 / QQ 直查走各平台公开接口，结果是“该账号存在”，不代表身份确认<br>
     请遵守各平台服务条款与当地法律，不要用于骚扰或非法画像
@@ -611,6 +694,120 @@ function mgRender(data) {
     btn.addEventListener('click', () => window.open(btn.dataset.open, '_blank', 'noopener,noreferrer'));
   });
 }
+// ---- AI 搜索 ----
+function mdToHtml(text) {
+  const lines = String(text).split('\n');
+  const out = [];
+  let inList = false;
+  const inline = s => esc(s)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (!line.trim()) { if (inList) { out.push('</ul>'); inList = false; } continue; }
+    const h = line.match(/^#{1,4}\s+(.*)$/);
+    if (h) {
+      if (inList) { out.push('</ul>'); inList = false; }
+      out.push('<div style="margin:12px 0 6px;color:var(--accent);font-weight:600">' + inline(h[1]) + '</div>');
+      continue;
+    }
+    const li = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+    if (li) {
+      if (!inList) { out.push('<ul style="margin:6px 0 10px 18px;padding:0">'); inList = true; }
+      out.push('<li style="margin:3px 0">' + inline(li[1]) + '</li>');
+      continue;
+    }
+    if (inList) { out.push('</ul>'); inList = false; }
+    out.push('<div style="margin:6px 0">' + inline(line) + '</div>');
+  }
+  if (inList) out.push('</ul>');
+  return out.join('');
+}
+
+function aiSources(list) {
+  const box = $('aiSrc');
+  if (!list || !list.length) { box.style.display = 'none'; return; }
+  box.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-bottom:8px">本次参考的站点（来自本地库）</div>' +
+    '<div class="row">' + list.map(s => {
+      const url = s.url_main || s.url || '';
+      return `<button class="mini" data-open="${esc(url)}">${esc(s.name)}</button>`;
+    }).join('') + '</div>';
+  box.querySelectorAll('[data-open]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.open) window.open(btn.dataset.open, '_blank', 'noopener,noreferrer');
+    });
+  });
+  box.style.display = 'block';
+}
+
+async function aiAsk() {
+  const q = $('aiQ').value.trim();
+  if (!q) return;
+  const btn = $('aiGo'), st = $('aiStatus');
+  btn.disabled = true;
+  st.classList.remove('err');
+  st.textContent = 'R1 正在想…（14B 本机推理，通常 10-60 秒）';
+  $('aiAnswer').style.display = 'none';
+  $('aiSrc').style.display = 'none';
+  try {
+    const res = await fetch('/api/ai', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({q})
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || ('HTTP ' + res.status));
+    let head = '';
+    if (d.run && d.run.tool) {
+      head = '<div class="runline">已自动执行 · <strong>' + esc(d.run.tool) + '</strong> · ' +
+        esc(d.run.target) + ' · ' + d.run.elapsed + 's' +
+        (d.run.count ? ' · 命中 ' + d.run.count : '') +
+        (d.run.ok ? '' : ' · 执行有报错') + '</div>';
+    }
+    $('aiAnswer').innerHTML = head + mdToHtml(d.answer || '（模型没有返回内容）');
+    $('aiAnswer').style.display = 'block';
+    aiSources(d.sources);
+    st.textContent = '完成 · ' + d.elapsed + 's · ' + d.model;
+  } catch (e) {
+    st.classList.add('err');
+    st.textContent = '出错了：' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$('aiGo').addEventListener('click', aiAsk);
+$('aiQ').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); aiAsk(); } });
+
+// ---- 扩展工具：邮箱 / Google / 手机号 / 域名 ----
+async function runExtra(tool, target, btn, statusEl, outEl) {
+  const t = target.value.trim();
+  if (!t) { statusEl.classList.add('err'); statusEl.textContent = '先填内容'; return; }
+  btn.disabled = true;
+  statusEl.classList.remove('err');
+  statusEl.textContent = '正在跑 ' + tool + '，最长几分钟…';
+  outEl.classList.remove('on');
+  try {
+    const res = await fetch('/api/extra', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tool, target: t})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    outEl.textContent = data.output || '（没有输出）';
+    outEl.classList.add('on');
+    statusEl.textContent = '完成 · 耗时 ' + data.elapsed + 's';
+  } catch (e) {
+    statusEl.classList.add('err');
+    statusEl.textContent = '出错了：' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('hlGo').addEventListener('click', () => runExtra('holehe', $('hlTarget'), $('hlGo'), $('hlStatus'), $('hlOut')));
+$('ghGo').addEventListener('click', () => runExtra('ghunt', $('ghTarget'), $('ghGo'), $('ghStatus'), $('ghOut')));
+$('phGo').addEventListener('click', () => runExtra('phoneinfoga', $('phTarget'), $('phGo'), $('phStatus'), $('phOut')));
+$('hvGo').addEventListener('click', () => runExtra('harvester', $('hvTarget'), $('hvGo'), $('hvStatus'), $('hvOut')));
 </script>
 </body>
 </html>

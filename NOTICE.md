@@ -19,7 +19,7 @@
 | 改动 | 说明 |
 | --- | --- |
 | 网页服务 | `sherlock_web.py`，仅用 Python 标准库，把 CLI 包装成异步任务 + JSON API，带限流与并发保护 |
-| 前端页面 | `index.html`，单页三块卡片：全站查询、中文昵称搜索、国内平台直查 |
+| 前端页面 | `index.html`，单页九块卡片：全站查询、AI 搜索、中文昵称搜索、国内平台直查、Maigret、Holehe、GHunt、PhoneInfoga、theHarvester |
 | 国内站点 | `sites_cn.json` 内 8 个经实测可稳定判定的站点，启动时与上游 `data.json` 合并为 `data_merged.json` |
 | 中文用户名 | 放开用户名正则到 CJK 范围，中文昵称亦可作为查询词 |
 | 中文昵称搜索 | 调用 B 站公开搜索接口按昵称搜人，拿到 UID 后再交由 Sherlock 验证 |
@@ -28,11 +28,16 @@
 | QQ 号查询 | 依据 QQ 空间页面判定账号是否注册 |
 | 微信查询 | 降级实现：按关键词反查发过相关文章的公众号（个人微信号无公开主页，无法查存在性） |
 | Maigret 引擎 | 接入 [soxoj/maigret](https://github.com/soxoj/maigret)（Sherlock 的第三方分支，独立仓库、独立安装）作为第二引擎，可按国家/类别标签扫描；本项目仅调用其命令行，不包含其代码 |
+| 扩展工具 | 接入 [holehe](https://github.com/megadose/holehe)、[GHunt](https://github.com/mxrch/GHunt)、[PhoneInfoga](https://github.com/sundowndev/phoneinfoga)、[theHarvester](https://github.com/laramies/theHarvester)（各自独立仓库、需自行安装）；同样**只调用命令行、不打包其代码**，输入按邮箱/域名/号码分别做格式校验 |
+| AI 助手 | 接本地 [Ollama](https://ollama.com)：中文自然语言提问，模型可自行挑选检索工具跑完再作答，返回调用轨迹与来源；不含任何云端 API 密钥 |
 | 编码修复 | 子进程输出按 utf-8 / gbk 自适应解码，修正 Windows 计划任务下中文站点名乱码 |
 
 上游的 `data.json`、`sherlock.py` 等文件**未被修改**，因此对上游执行 `git pull` 不会产生冲突。
 
 ## 3. 数据来源
 
-查询结果来自各平台的公开页面与公开接口，本项目不存储、不缓存用户查询记录，也不建立任何个人档案数据库。
-平台接口随时可能变更或失效，本项目不保证长期可用。
+查询结果来自各平台的公开页面与公开接口，本项目**不建立任何个人档案数据库**，也不对外上传任何查询内容。
+
+需要说明的一处本地记录：AI 搜索那一栏会用同目录下的 `ai.db`（SQLite，自动创建）做两件事——
+存站点目录（每次启动按 `data.json` 重建），以及记一条工具调用日志（工具名、目标、命中数、时间戳）。
+这**只存在本机**，不入仓库（见 `.gitignore`），随时可删；不删除也不会上传或共享。

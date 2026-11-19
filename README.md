@@ -12,7 +12,9 @@
 - 加了 8 个国内站点，中文用户名也能查；
 - 中文昵称可以先搜人（B 站搜索），拿到 ID 再用 Sherlock 验证；
 - 微博 / 抖音号 / QQ 号 / 微信 有专门的一栏直查；
-- 接了第二个引擎 Maigret（站点库 5897 个，是 Sherlock 的分支），可按国家/类别标签扫。
+- 接了第二个引擎 Maigret（站点库 5897 个，是 Sherlock 的分支），可按国家/类别标签扫；
+- 邮箱 / 手机号 / 域名 可以接着交给 Holehe、GHunt、PhoneInfoga、theHarvester 深挖；
+- 接了本地 Ollama 大模型：直接用中文提问，它会自己挑工具查完再给结论（含调用轨迹与来源）。
 
 只用 Python 标准库，不需要额外装依赖。
 
@@ -25,11 +27,13 @@
 | 类型 | 内容 |
 | --- | --- |
 | 新增 | `sherlock_web.py` —— 标准库 HTTP 服务，把 sherlock CLI 包成异步任务 + JSON 接口 |
-| 新增 | `index.html` —— 单页前端，三块卡片（全站查询 / 中文昵称搜索 / 国内平台直查） |
+| 新增 | `index.html` —— 单页前端，九块卡片（全站查询 / AI 搜索 / 中文昵称 / 国内平台直查 / Maigret / Holehe / GHunt / PhoneInfoga / theHarvester） |
 | 新增 | `sites_cn.json` —— 8 个国内站点定义，启动时与上游 `data.json` 合并成 `data_merged.json` |
 | 新增 | 微博 / 抖音 / QQ / 微信 的直查逻辑（`/api/plat-search`） |
 | 新增 | 中文昵称搜索（`/api/cn-search`，走 B 站公开搜索接口） |
 | 新增 | Maigret 第二引擎（`/api/maigret`，站点库 5897 个，可按标签筛） |
+| 新增 | 扩展工具调用（`/api/extra`）：Holehe / GHunt / PhoneInfoga / theHarvester，按输入类型逐个校验（邮箱、域名、号码格式错了直接拒） |
+| 新增 | 本地大模型助手（`/api/ai`）：接 Ollama，用中文提问，可自动挑检索工具跑完再作答，返回调用轨迹与来源 |
 | 新增 | 限流、并发上限、排队、超时、`CF-Connecting-IP` 识别 |
 | 改动 | 无。上游 `data.json`、`sherlock.py` 都不动，`git pull` 不会冲突 |
 
@@ -99,7 +103,12 @@ git clone https://github.com/<你的账号>/sherlock-web.git ./web
 | --- | --- | --- |
 | `SHERLOCK_HOME` | 脚本所在目录的上一级 | 上游 Sherlock 仓库根目录 |
 | `SHERLOCK_EXE` | 自动查找 | `sherlock` 可执行文件路径 |
-| `MAIGRET_EXE` | `D:\Maigret\.venv\Scripts\maigret.exe` | Maigret 可执行文件路径（不装 Maigret 时这一栏功能不可用，其余不受影响） |
+| `MAIGRET_EXE` | 空 | Maigret 可执行文件路径；不设置或找不到时这一栏提示「找不到 Maigret」，其余功能不受影响 |
+| `OSINT_HUB` | 脚本同级 `osint-hub/` | Holehe / GHunt / PhoneInfoga / theHarvester 所在环境目录 |
+| `SHERLOCK_GHUNT` | `0` | 设为 `1` 才启用 GHunt（会用你本机的 Google 登录态，默认关闭） |
+| `OLLAMA_URL` | `http://127.0.0.1:11434` | 本地 Ollama 服务地址 |
+| `AI_MODEL` | `deepseek-r1:14b` | AI 搜索用的模型名 |
+| `AI_DB` | 脚本同级 `ai.db` | AI 会话缓存库（自动创建，不该提交到仓库） |
 | `SHERLOCK_WEB_HOST` | `127.0.0.1` | 改成 `0.0.0.0` 局域网/公网才能访问 |
 | `SHERLOCK_WEB_PORT` | `8090` | 端口 |
 
@@ -173,6 +182,26 @@ curl.exe -s -X POST http://127.0.0.1:8090/api/search \
 - **它的判据比 Sherlock 宽松，误报也更多**：实测拿一个不存在的乱码用户名扫中国站点，
   仍会返回 1 条命中（`bbs.aw-ol.com`）。所以这栏结果只当线索，必须点开核对。
 
+### `POST /api/extra` —— 扩展工具（邮箱 / 手机号 / 域名）
+```json
+{ "tool": "holehe|ghunt|phoneinfoga|harvester", "target": "someone@example.com" }
+```
+- `target` 会被按工具类型校验：`holehe` / `ghunt` 必须是合法邮箱，`harvester` 必须是域名，
+  `phoneinfoga` 需要 6-15 位数字（建议带国家码）。格式不对直接 400，不会去跑命令。
+- 依赖 `OSINT_HUB` 指向的环境；没装则返回「找不到」提示，不影响其他卡片。
+- `ghunt` 默认关闭，服务端启动时必须 `SHERLOCK_GHUNT=1` 才可用。
+
+### `POST /api/ai` —— 本地大模型助手
+```json
+{ "q": "帮我查一下 torvalds 在哪些平台有账号" }
+```
+- `q` 为 2-300 字符的中文/英文自然语言。
+- 优先走「工具模式」：模型自己决定调用 `/api/search`、`/api/maigret` 等，跑完再总结；
+  返回 `{ "mode": "tool", "answer": ..., "run": [调用轨迹], "sources": [...], "model": ..., "elapsed": ... }`。
+- 不需要工具时退回纯对话模式，返回 `{ "answer": ..., "sources": [...] }`。
+- 连不上 Ollama 会返回 502 并提示先启动 `ollama serve`。
+- **结果里会写清楚哪些是查到的、哪些是模型推断的**——推断部分不能当证据。
+
 ---
 
 ## 5. 国内站点：判据与取舍
@@ -240,6 +269,11 @@ Sherlock 的模型是「发一个请求 → 看状态码或正则」，它不能
 - Maigret 引擎的命中比 Sherlock 多，但**误报率也更高**（不存在的用户名也可能命中个别站点），
   只适合当线索，不能当结论。它还依赖单独安装（`pip install maigret`），没装则这一栏不可用。
 - 查到的结果只证明「该用户名在该站有公开主页」，**不代表是同一个人**。
+- 扩展工具（Holehe / GHunt / PhoneInfoga / theHarvester）要额外装进 `OSINT_HUB` 指向的环境；
+  没装时对应卡片报「找不到」，其余功能不受影响。GHunt 还需先执行一次 `ghunt login`，
+  且服务端要 `SHERLOCK_GHUNT=1` 才放行。
+- AI 搜索依赖本机 Ollama 和模型（默认 `deepseek-r1:14b`）；没跑 Ollama 时 `/api/ai` 返回 502。
+  模型给出的结论属于推断，只有 `sources` 里列出的才是实际查到的。
 - 默认限流：每 IP 每 10 分钟 12 次，全站每小时 80 次，同时最多 2 个查询，排队上限 20。
 
 ---
@@ -295,6 +329,12 @@ ingress:
 
 - [sherlock-project/sherlock](https://github.com/sherlock-project/sherlock)（MIT）—— 没有它就没有这一切；
   本项目与其**无隶属关系**，也未获其背书。上游的站点数据与 CLI 逻辑版权归上游作者所有。
+- [Maigret](https://github.com/soxoj/maigret)（Sherlock 的第三方分支）—— 第二引擎，仅调用其命令行，不打包其代码。
+- [holehe](https://github.com/megadose/holehe) / [GHunt](https://github.com/mxrch/GHunt) /
+  [PhoneInfoga](https://github.com/sundowndev/phoneinfoga) /
+  [theHarvester](https://github.com/laramies/theHarvester) —— 扩展工具，同样只调用命令行、不打包代码，
+  使用前请各自确认其许可证。
+- [Ollama](https://ollama.com) —— 本地模型推理，AI 搜索那一栏靠它。
 - 各平台公开接口（微博、B 站、抖音、QQ 空间、搜狗微信）—— 仅用于查询公开信息，接口随时可能变更。
 
 如果你觉得有用，去给上游点个 star；这个仓库只是它的一层壳。
