@@ -16,7 +16,19 @@
 - 邮箱 / 手机号 / 域名 可以接着交给 Holehe、GHunt、PhoneInfoga、theHarvester 深挖；
 - 接了本地 Ollama 大模型：直接用中文提问，它会自己挑工具查完再给结论（含调用轨迹与来源）。
 
-只用 Python 标准库，不需要额外装依赖。
+> ### ⚠️ AI 那一栏的模型，跑在**你自己的电脑**上，不是作者的
+>
+> 仓库里**没有模型权重**（模型动辄 9-10 GB），也**没有任何云端 API 密钥**，更没有作者的公网地址。
+> 代码里的默认值是 `OLLAMA_URL = http://127.0.0.1:11434`——`127.0.0.1` 是回环地址，
+> 在谁的机器上运行，指的就是**谁本机的 Ollama**。
+>
+> - 你不装 Ollama → AI 搜索直接返回 `502`，其余八块功能照常；
+> - 你装了 → 算力花在**你自己的显卡**上，跟本仓库作者无关；
+> - 作者不提供任何托管模型服务，也不承担你的推理开销。
+>
+> 具体三步见第 2 节「可选：让 AI 搜索能用」。
+
+只用 Python 标准库，不需要额外装依赖（AI 搜索除外：它需要一个本机 Ollama 服务，见第 2 节）。
 
 ---
 
@@ -85,6 +97,36 @@ python D:\Sherlock\web\sherlock_web.py
 或者用附带的重启守护脚本：`D:\Sherlock\web\run_web.bat`（崩溃自动重启，日志写 `service.log`）。
 
 首次启动会自动生成 `data_merged.json`（已合并国内站点），之后改 `sites_cn.json` 需要重启服务才会生效。
+
+### 可选：让 AI 搜索能用（模型在你自己机器上）
+
+AI 搜索**不是**调某个公共 API，也**不会**连作者的机器。它只连 `OLLAMA_URL`，默认
+`http://127.0.0.1:11434`，也就是**你自己电脑上的 Ollama**。不装就是这一栏不可用，其余八块照常。
+
+```bash
+# 1) 装 Ollama：https://ollama.com/download （Windows / macOS / Linux 都有）
+# 2) 拉模型：deepseek-r1:14b 约 9 GB；显存小于 12 GB 建议换成 qwen2.5:7b
+ollama pull deepseek-r1:14b
+# 3) 确认它在跑
+ollama list
+curl http://127.0.0.1:11434/api/tags
+```
+
+拉完照常启动网页服务就行。想换模型、换到局域网另一台机器上的模型：
+
+```bash
+# Windows（写在 run_web.bat 里，或启动前 set）
+set AI_MODEL=qwen2.5:7b
+set OLLAMA_URL=http://192.168.1.50:11434
+
+# Linux / macOS
+export AI_MODEL=qwen2.5:7b
+export OLLAMA_URL=http://192.168.1.50:11434
+```
+
+把 `OLLAMA_URL` 指向局域网另一台机器时，**对方那台**要设 `OLLAMA_HOST=0.0.0.0`，否则只监听它自己的回环。
+
+> 换句话说：这个仓库**不附带模型、不附带算力、不附带密钥**。谁的机器跑，烧谁的显卡。
 
 ### Linux / macOS
 
@@ -200,6 +242,9 @@ curl.exe -s -X POST http://127.0.0.1:8090/api/search \
   返回 `{ "mode": "tool", "answer": ..., "run": [调用轨迹], "sources": [...], "model": ..., "elapsed": ... }`。
 - 不需要工具时退回纯对话模式，返回 `{ "answer": ..., "sources": [...] }`。
 - 连不上 Ollama 会返回 502 并提示先启动 `ollama serve`。
+- **模型归属**：这个接口只转发给**使用者自己**的 Ollama（默认 `127.0.0.1:11434`），
+  服务端不代理任何第三方推理服务，仓库里没有作者的地址、密钥或模型文件。
+  别人 clone 后不装 Ollama，这一栏永远 502；作者不提供托管版，也不为你的调用买单。
 - **结果里会写清楚哪些是查到的、哪些是模型推断的**——推断部分不能当证据。
 
 ---
@@ -309,6 +354,11 @@ ingress:
 
 > ⚠️ 东西放到公网就是「谁拿到网址都能查」。建议至少加一层 Cloudflare Access（邮箱验证码）
 > 或者自己在 `sherlock_web.py` 里加访问口令。`tunnel_token.txt`、`cloudflared.yml` 千万不要提交到仓库。
+
+> ⚠️ **尤其注意 AI 搜索那一栏**：公网可访时，任何陌生人点一下「AI 搜索」，跑的**都是你这台机器的
+> 显卡和 Ollama**（一次 14B 推理几十秒，排队上限也会被占满）。放公网前请务必
+> 给整站加访问控制（Cloudflare Access / Nginx Basic Auth），或者干脆只在内网用。
+> 这一栏不是云服务，没有别人替你分摊算力。
 
 ---
 
